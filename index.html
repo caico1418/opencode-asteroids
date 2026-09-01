@@ -12,15 +12,156 @@
       align-items: center;
       justify-content: center;
       height: 100vh;
+      font-family: monospace;
+    }
+    #wrap {
+      position: relative;
+      display: inline-block;
     }
     canvas {
       display: block;
       border: 1px solid #222;
     }
+    #btnSkins {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 5;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      border: 1px solid #444;
+      padding: 6px 12px;
+      font: 12px monospace;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+    }
+    #btnSkins:hover { border-color: #888; background: rgba(30,30,30,0.9); }
+    #skinPanel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      background: rgba(10,10,14,0.96);
+      border: 1px solid #333;
+      padding: 18px 20px 14px;
+      min-width: 360px;
+      display: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    }
+    #skinPanel h3 {
+      color: #fff;
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    #skinList {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .skinBtn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 8px 10px;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      color: #ccc;
+      font: 13px monospace;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .skinBtn:hover { border-color: #555; background: #1a1a1a; color: #fff; }
+    .skinBtn.active { border-color: var(--skin-color, #fff); background: #1e1e1e; color: #fff; box-shadow: 0 0 10px var(--skin-glow, transparent); }
+    .skinSwatch {
+      width: 34px;
+      height: 20px;
+      border: 1px solid #333;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+    }
+    .skinCheck { margin-left: auto; font-size: 12px; opacity: 0; }
+    .skinBtn.active .skinCheck { opacity: 1; }
+    #skinHint {
+      margin-top: 10px;
+      text-align: center;
+      color: #666;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
-  <canvas id="canvas" width="800" height="600"></canvas>
+  <div id="wrap">
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <button id="btnSkins" type="button">SKINS [K]</button>
+    <div id="skinPanel" role="dialog" aria-label="Selector de skins">
+      <h3>— SKINS —</h3>
+      <div id="skinList"></div>
+      <div id="skinHint">K / Esc para cerrar &nbsp;·&nbsp; Espacio sigue reiniciando en Game Over</div>
+    </div>
+  </div>
   <script src="game.js"></script>
+  <script>
+    // ── Selector de skins (overlay HTML) ──────────────────────────────────
+    (function(){
+      const panel = document.getElementById('skinPanel');
+      const list  = document.getElementById('skinList');
+      const btn   = document.getElementById('btnSkins');
+      if (!panel || !list || !btn) return;
+
+      function isOpen(){ return panel.style.display !== 'none'; }
+      function open(){ panel.style.display='block'; render(); }
+      function close(){ panel.style.display='none'; }
+      function toggle(){ isOpen()?close():open(); }
+
+      function render(){
+        list.innerHTML='';
+        (window.SKINS||[]).forEach(skin=>{
+          const b=document.createElement('button');
+          b.type='button';
+          b.className='skinBtn'+(skin.id===window.currentSkinId?' active':'');
+          b.style.setProperty('--skin-color', skin.stroke);
+          b.style.setProperty('--skin-glow', skin.shadow||'transparent');
+          const sw=document.createElement('span');
+          sw.className='skinSwatch';
+          sw.style.background = skin.fill || 'transparent';
+          sw.style.borderColor = skin.stroke;
+          sw.style.boxShadow = skin.shadow ? '0 0 6px '+skin.shadow : 'none';
+          sw.style.color = skin.stroke;
+          sw.textContent='◭';
+          const label=document.createElement('span');
+          label.textContent=skin.nombre;
+          const check=document.createElement('span');
+          check.className='skinCheck';
+          check.textContent='✓';
+          check.style.color=skin.stroke;
+          b.appendChild(sw); b.appendChild(label); b.appendChild(check);
+          b.addEventListener('click', ()=>{
+            if(window.setSkin) window.setSkin(skin.id);
+            render();
+          });
+          list.appendChild(b);
+        });
+      }
+
+      btn.addEventListener('click', toggle);
+      window.addEventListener('keydown', (e)=>{
+        if(e.code==='KeyK'){ e.preventDefault(); toggle(); }
+        if(e.code==='Escape' && isOpen()){ e.preventDefault(); close(); }
+      });
+      // Cerrar al hacer click fuera
+      panel.addEventListener('click', (e)=>{ if(e.target===panel) close(); });
+
+      // Exponer para refrescar tras carga
+      window._skinPanelRender = render;
+    })();
+  </script>
 </body>
 </html>
