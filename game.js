@@ -31,11 +31,12 @@ const randInt = (min, max) => Math.floor(rand(min, max + 1));
 
 // ── Skins ─────────────────────────────────────────────────────────────────────
 const SKINS = [
-  { id: 'clasica', nombre: 'Clásica', stroke: '#fff',    fill: null,                         shadow: null,     llama: 'rgba(255,130,0,0.85)', bullet: '#fff' },
-  { id: 'neon',    nombre: 'Neón',    stroke: '#0ff',    fill: 'rgba(0,255,255,0.06)',        shadow: '#0ff',    llama: 'rgba(0,255,255,0.9)', bullet: '#0ff' },
-  { id: 'inferno', nombre: 'Ínfero',  stroke: '#ff3b30', fill: null,                         shadow: '#ff3b30', llama: 'rgba(255,60,30,0.9)', bullet: '#ff6b60' },
-  { id: 'void',    nombre: 'Vacío',   stroke: '#b07cff', fill: 'rgba(176,124,255,0.07)',      shadow: '#b07cff', llama: 'rgba(176,124,255,0.85)', bullet: '#b07cff' },
-  { id: 'oro',     nombre: 'Oro',     stroke: '#ffeb3b', fill: 'rgba(255,235,59,0.07)',       shadow: '#ffeb3b', llama: 'rgba(255,235,59,0.9)', bullet: '#ffeb3b' },
+  { id: 'clasica', nombre: 'Clásica', stroke: '#fff',    fill: null,                         shadow: null,     llama: 'rgba(255,130,0,0.85)', bullet: '#fff', scale: 1, pointsMult: 1 },
+  { id: 'neon',    nombre: 'Neón',    stroke: '#0ff',    fill: 'rgba(0,255,255,0.06)',        shadow: '#0ff',    llama: 'rgba(0,255,255,0.9)', bullet: '#0ff', scale: 1, pointsMult: 1 },
+  { id: 'inferno', nombre: 'Ínfero',  stroke: '#ff3b30', fill: null,                         shadow: '#ff3b30', llama: 'rgba(255,60,30,0.9)', bullet: '#ff6b60', scale: 1, pointsMult: 1 },
+  { id: 'void',    nombre: 'Vacío',   stroke: '#b07cff', fill: 'rgba(176,124,255,0.07)',      shadow: '#b07cff', llama: 'rgba(176,124,255,0.85)', bullet: '#b07cff', scale: 1, pointsMult: 1 },
+  { id: 'oro',     nombre: 'Oro',     stroke: '#ffeb3b', fill: 'rgba(255,235,59,0.07)',       shadow: '#ffeb3b', llama: 'rgba(255,235,59,0.9)', bullet: '#ffeb3b', scale: 1, pointsMult: 1 },
+  { id: 'morada',  nombre: 'Morada',  stroke: '#9c27b0', fill: 'rgba(156,39,176,0.08)',       shadow: '#9c27b0', llama: 'rgba(255,130,255,0.9)', bullet: '#ce93d8', scale: 2, pointsMult: 2 },
 ];
 const SKIN_IDS = SKINS.map(s => s.id);
 function getSkin(id) { return SKINS.find(s => s.id === id) || SKINS[0]; }
@@ -269,7 +270,8 @@ class Ship {
     this.angle  = -Math.PI / 2;
     this.vx     = 0;
     this.vy     = 0;
-    this.radius = 12;
+    this.skinId = currentSkinId;
+    this.radius = 12 * (getSkin(this.skinId).scale || 1);
     this.thrusting     = false;
     this.invincible    = 3;
     this.shootCooldown = 0;
@@ -278,7 +280,6 @@ class Ship {
     this.escudoTimer = 0;
     this.escudoHits = 0;
     this.dead          = false;
-    this.skinId = currentSkinId;
   }
 
   tieneEscudo() {
@@ -322,12 +323,13 @@ class Ship {
   tryShoot() {
     if (this.shootCooldown > 0 || this.dead) return [];
     this.shootCooldown = 0.2;
-    const NOSE = 21;
+    const sc = getSkin(this.skinId).scale || 1;
+    const NOSE = 21 * sc;
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
     const skin = getSkin(this.skinId);
     if (this.tripleTimer > 0) {
-      const OFFSET = 8;
+      const OFFSET = 8 * sc;
       const sx = -Math.sin(this.angle) * OFFSET;
       const sy =  Math.cos(this.angle) * OFFSET;
       return [
@@ -343,13 +345,16 @@ class Ship {
     if (this.dead) return;
     if (this.invincible > 0 && Math.floor(this.invincible * 8) % 2 === 0) return;
 
+    const skin = getSkin(this.skinId);
+    const sc = skin.scale || 1;
+
     const velocidadActiva = this.velocidadTimer > 0;
     const tripleActivo = this.tripleTimer > 0;
-    const skin = getSkin(this.skinId);
 
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
+    ctx.scale(sc, sc);
     // Aura según power-ups activos (power-up sobrescribe skin)
     if (velocidadActiva && tripleActivo) {
       ctx.shadowColor = '#fff';
@@ -632,16 +637,17 @@ function update(dt) {
   // Bala vs asteroide (incluye estrella fugaz)
   const newAsteroids = [];
   const newPowerUps = [];
+  const pm = (getSkin(currentSkinId).pointsMult || 1);
   for (const b of bullets) {
     for (const a of asteroids) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
         if (a.esFugaz) {
-          score += ESTRELLA_FUGAZ_POINTS;
+          score += ESTRELLA_FUGAZ_POINTS * pm;
           explode(a.x, a.y, 12);
         } else {
-          score += POINTS[a.size];
+          score += POINTS[a.size] * pm;
           explode(a.x, a.y, a.size * 5);
           newAsteroids.push(...a.split());
           if (a.size > 1 && Math.random() < POWERUP_DROP_CHANCE) {
